@@ -1,0 +1,71 @@
+CONTROLERS:
+-req.body:Documento JSON enviado por el usuario
+-req.params:Ruta---> /restaurants/:restaurantId==req.params.restaurantId
+-req.query: parámetro de consulta   
+-req.user: usuario loggeado      req.user.id  == Saber usuario loggeado
+
+ERRORES:
+401 Credenciales incorrectas
+422 Error geneeral
+
+GET: Leer datos sin modificarlos
+• req.params: Para obtener un recurso específico, por ejemplo: /restaurants/:restaurantId
+• req.query: leer datos con filtro específicos, por ejemplo: /restaurants/:restaurantId?status=open
+• req.user: leer los datos de un usuario en específico.
+
+POST: operaciones de creación completa:
+• req.body: crea un nuevo recurso, por ejemplo, enviar datos de un nuevo restaurante en req.body al hacer post a
+• /restaurants.
+
+PUT Y PATCH: actualizar un recurso completo (PUT) o parcialmente (PATCH):
+• req.params: Para actualizar un recurso existente, por ejemplo: /restaurants/:restaurantId
+• req.body: modificar un recurso existente, por ejemplo enviar datos de un nuevo restaurante en req.body al hacer
+PUT o PATCH a /restaurants/:restaurantId
+• req.user: actualizar los datos de un usuario en específico.
+DELETE: para eliminar un recurso específico.
+• req.params: para borrar un recurso existente, por ejemplo: /restaurants/:restaurantId
+• req.user: eliminar los datos de un usuario en específico.
+
+
+VALIDATION: Tipo datos
+MIDDLEWARE Requisitos concretos(permisos...)
+
+OPCIOÓN B CREATE:
+// req.body = {orderId, startedArt,…, updatedAt, [[orderId, productId0, unityprice0,
+quantity0], … [orderId, productIdN, unityPriceN, quantityN]]}
+const checkCreationOrder = async ( value , { req }) => {
+ try {
+ // 2. Check that products is a non-empty array
+ if (req.body.products.length < 1) {
+ return Promise.reject(new Error('The array of products is empty'))
+ }
+ for (const p of value) {
+ // composed of objects with productId
+ if (p.productId < 1) {
+ return Promise.reject(new Error('The product has not valid Id'))
+ }
+ // 3. Check that products are available
+ const product = await Product.findByPk(p.productId)
+ if (!product.availability) {
+ return Promise.reject(new Error('The product is not available'))
+ }
+ // 4. Check that all the products belong to the same restaurant
+ if (product.restaurantId !== req.body.restaurantId) {
+ return Promise.reject(new Error('The product does not belong to the restaurant'))
+ }
+ }
+ return Promise.resolve()
+ } catch (err) {
+ return Promise.reject(new Error(err))
+ }
+}
+const create = [
+ // 1. Check that restaurantId is present in the body and corresponds to an existing
+restaurant
+ check('restaurantId').exists(),
+ check('price').default(null).optional({ nullable: true }).isFloat().toFloat(),
+ check('address').exists().isString().isLength({ min: 1, max: 255 }).trim(),
+ check('products').custom(checkCreationOrder),
+ // 2. and quantity greater than 0
+ check('products.*.quantity').isInt({ min: 1 }).toInt()
+]
